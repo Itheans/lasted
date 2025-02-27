@@ -1,3 +1,4 @@
+// lib/pages.dart/matching/matching.dart
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -20,7 +21,8 @@ class SelectTargetDateScreen extends StatefulWidget {
 }
 
 class _SelectTargetDateScreenState extends State<SelectTargetDateScreen> {
-  final List<DateTime> _selectedDate = [];
+  // เปลี่ยนจาก DateTime? เป็น List<DateTime> เพื่อรองรับหลายวัน
+  final List<DateTime> _selectedDates = [];
   final DateFormat _dateFormatter = DateFormat('dd MMM yyyy', 'th');
 
   Future<void> _selectDate() async {
@@ -45,28 +47,29 @@ class _SelectTargetDateScreenState extends State<SelectTargetDateScreen> {
       },
     );
 
-    if (picked != null && !_selectedDate.contains(picked)) {
+    if (picked != null && !_selectedDates.contains(picked)) {
       setState(() {
-        _selectedDate.add(picked);
-        _selectedDate.sort();
+        _selectedDates.add(picked);
+        // เรียงลำดับวันที่
+        _selectedDates.sort();
       });
     }
   }
 
   void _removeDate(DateTime date) {
     setState(() {
-      _selectedDate.remove(date);
+      _selectedDates.remove(date);
     });
   }
 
   void _confirmDate() {
-    if (_selectedDate.isNotEmpty) {
-      widget.onDateSelected(_selectedDate);
+    if (_selectedDates.isNotEmpty) {
+      widget.onDateSelected(_selectedDates);
       Navigator.push(
         context,
         MaterialPageRoute(
           builder: (context) => SearchSittersScreen(
-            targetDates: _selectedDate,
+            targetDates: _selectedDates,
           ),
         ),
       );
@@ -163,7 +166,7 @@ class _SelectTargetDateScreenState extends State<SelectTargetDateScreen> {
               ),
             ),
             Expanded(
-              child: _selectedDate.isEmpty
+              child: _selectedDates.isEmpty
                   ? Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -186,9 +189,9 @@ class _SelectTargetDateScreenState extends State<SelectTargetDateScreen> {
                     )
                   : ListView.builder(
                       padding: const EdgeInsets.all(16),
-                      itemCount: _selectedDate.length,
+                      itemCount: _selectedDates.length,
                       itemBuilder: (context, index) {
-                        final date = _selectedDate[index];
+                        final date = _selectedDates[index];
                         return Container(
                           margin: const EdgeInsets.only(bottom: 12),
                           decoration: BoxDecoration(
@@ -242,7 +245,7 @@ class _SelectTargetDateScreenState extends State<SelectTargetDateScreen> {
       ),
       bottomNavigationBar: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
-        height: _selectedDate.isEmpty ? 0 : 100,
+        height: _selectedDates.isEmpty ? 0 : 100,
         decoration: BoxDecoration(
           color: Colors.white,
           boxShadow: [
@@ -253,7 +256,7 @@ class _SelectTargetDateScreenState extends State<SelectTargetDateScreen> {
             ),
           ],
         ),
-        child: _selectedDate.isEmpty
+        child: _selectedDates.isEmpty
             ? null
             : Padding(
                 padding: const EdgeInsets.all(20),
@@ -268,7 +271,7 @@ class _SelectTargetDateScreenState extends State<SelectTargetDateScreen> {
                     elevation: 0,
                   ),
                   child: Text(
-                    'ค้นหาผู้รับเลี้ยง (${_selectedDate.length} วัน)',
+                    'ค้นหาผู้รับเลี้ยง (${_selectedDates.length} วัน)',
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,

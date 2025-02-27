@@ -36,20 +36,39 @@ class _BookingListPageState extends State<BookingListPage> {
         return;
       }
 
-      Query query = _firestore
+      // ดึงข้อมูลโดยใช้เพียง userId
+      QuerySnapshot snapshot = await _firestore
           .collection('bookings')
           .where('userId', isEqualTo: currentUser.uid)
-          .orderBy('createdAt', descending: true);
+          .get();
 
-      // กรองตามสถานะถ้าไม่ได้เลือก 'ทั้งหมด'
+      // กรองและเรียงลำดับข้อมูลในแอป
+      List<DocumentSnapshot> filteredDocs = snapshot.docs;
+
       if (_filterStatus != 'all') {
-        query = query.where('status', isEqualTo: _filterStatus);
+        filteredDocs = filteredDocs.where((doc) {
+          Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+          return data['status'] == _filterStatus;
+        }).toList();
       }
 
-      final QuerySnapshot snapshot = await query.get();
+      // เรียงลำดับตามวันที่สร้าง
+      filteredDocs.sort((a, b) {
+        Map<String, dynamic> dataA = a.data() as Map<String, dynamic>;
+        Map<String, dynamic> dataB = b.data() as Map<String, dynamic>;
+
+        Timestamp? timestampA = dataA['createdAt'] as Timestamp?;
+        Timestamp? timestampB = dataB['createdAt'] as Timestamp?;
+
+        if (timestampA == null && timestampB == null) return 0;
+        if (timestampA == null) return 1;
+        if (timestampB == null) return -1;
+
+        return timestampB.compareTo(timestampA); // เรียงจากใหม่ไปเก่า
+      });
 
       setState(() {
-        _bookings = snapshot.docs;
+        _bookings = filteredDocs;
         _isLoading = false;
       });
     } catch (e) {

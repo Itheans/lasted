@@ -3,8 +3,23 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 
-
 class BookingStatusScreen extends StatelessWidget {
+  List<DocumentSnapshot> _bookingsList = [];
+
+// เพิ่มฟังก์ชันสำหรับกรองและเรียงลำดับข้อมูล
+  void _processBookings(List<DocumentSnapshot> bookings) {
+    // กรองตามสถานะหรือเงื่อนไขอื่นๆ ตามต้องการ
+    // เรียงลำดับตามเวลา
+    bookings.sort((a, b) {
+      Timestamp? timeA = (a.data() as Map<String, dynamic>)['createdAt'];
+      Timestamp? timeB = (b.data() as Map<String, dynamic>)['createdAt'];
+      if (timeA == null && timeB == null) return 0;
+      if (timeA == null) return 1;
+      if (timeB == null) return -1;
+      return timeB.compareTo(timeA);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -12,7 +27,8 @@ class BookingStatusScreen extends StatelessWidget {
         title: Text('สถานะการฝากเลี้ยง'),
         backgroundColor: Colors.orange,
       ),
-      body: StreamBuilder<QuerySnapshot>(
+      body: // แก้ไข StreamBuilder
+          StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection('booking_requests')
             .where('userId', isEqualTo: FirebaseAuth.instance.currentUser?.uid)
@@ -28,9 +44,10 @@ class BookingStatusScreen extends StatelessWidget {
             return Center(child: CircularProgressIndicator());
           }
 
-          final bookings = snapshot.data!.docs;
+          _bookingsList = snapshot.data!.docs;
+          _processBookings(_bookingsList);
 
-          if (bookings.isEmpty) {
+          if (_bookingsList.isEmpty) {
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -51,10 +68,11 @@ class BookingStatusScreen extends StatelessWidget {
 
           return ListView.builder(
             padding: EdgeInsets.all(8),
-            itemCount: bookings.length,
+            itemCount: _bookingsList.length, // using _bookingsList
             itemBuilder: (context, index) {
-              final booking = bookings[index].data() as Map<String, dynamic>;
-              final bookingId = bookings[index].id;
+              final booking = _bookingsList[index].data()
+                  as Map<String, dynamic>; // but then using bookings
+              final bookingId = _bookingsList[index].id;
 
               return FutureBuilder<DocumentSnapshot>(
                 future: FirebaseFirestore.instance

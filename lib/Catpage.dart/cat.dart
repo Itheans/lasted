@@ -6,7 +6,8 @@ class Cat {
   final String breed;
   final String imagePath;
   final Timestamp? birthDate;
-  final String vaccinations;
+  final Map<String, dynamic>
+      vaccinations; // เปลี่ยนจาก String เป็น Map เพื่อเก็บข้อมูลวัคซีนแบบละเอียด
   final String description;
   final bool isForSitting; // เพิ่มฟิลด์สำหรับติดตามสถานะการฝากเลี้ยง
   final String? sittingStatus; // เพิ่มฟิลด์สำหรับติดตามสถานะการจับคู่
@@ -27,13 +28,37 @@ class Cat {
 
   factory Cat.fromFirestore(DocumentSnapshot doc) {
     Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+
+    // จัดการกับข้อมูลวัคซีนที่อาจอยู่ในรูปแบบเก่า (String) หรือใหม่ (Map)
+    Map<String, dynamic> vaccinationsData;
+    if (data['vaccinations'] is String) {
+      // รูปแบบเก่า เก็บเป็น String เดียว แปลงเป็น Map โดยแยกด้วย comma
+      List<String> vaccinationList =
+          data['vaccinations'].toString().split(', ');
+      vaccinationsData = {};
+      for (var vaccine in vaccinationList) {
+        if (vaccine.isNotEmpty) {
+          vaccinationsData[vaccine] = {
+            'isSelected': true,
+            'vaccinationDate': null // ไม่มีข้อมูลวันที่ในรูปแบบเก่า
+          };
+        }
+      }
+    } else if (data['vaccinations'] is Map) {
+      // รูปแบบใหม่ เก็บเป็น Map
+      vaccinationsData = Map<String, dynamic>.from(data['vaccinations']);
+    } else {
+      // กรณีไม่มีข้อมูลหรือข้อมูลไม่ตรงรูปแบบ
+      vaccinationsData = {};
+    }
+
     return Cat(
       id: doc.id,
       name: data['name'] ?? '',
       breed: data['breed'] ?? '',
       imagePath: data['imagePath'] ?? '',
       birthDate: data['birthDate'],
-      vaccinations: data['vaccinations'] ?? '',
+      vaccinations: vaccinationsData,
       description: data['description'] ?? '',
       isForSitting: data['isForSitting'] ?? false,
       sittingStatus: data['sittingStatus'],
@@ -60,6 +85,7 @@ class Cat {
     bool? isForSitting,
     String? sittingStatus,
     Timestamp? lastSittingDate,
+    Map<String, dynamic>? vaccinations,
   }) {
     return Cat(
       id: id,
@@ -67,11 +93,36 @@ class Cat {
       breed: breed,
       imagePath: imagePath,
       birthDate: birthDate,
-      vaccinations: vaccinations,
+      vaccinations: vaccinations ?? this.vaccinations,
       description: description,
       isForSitting: isForSitting ?? this.isForSitting,
       sittingStatus: sittingStatus ?? this.sittingStatus,
       lastSittingDate: lastSittingDate ?? this.lastSittingDate,
     );
+  }
+
+  // ฟังก์ชันสำหรับแสดงผลข้อมูลวัคซีนในรูปแบบข้อความ
+  String getVaccinationsAsString() {
+    if (vaccinations.isEmpty) {
+      return '';
+    }
+
+    List<String> vaccinationTexts = [];
+    vaccinations.forEach((key, value) {
+      if (value is Map && value['isSelected'] == true) {
+        if (value['vaccinationDate'] != null) {
+          // ถ้ามีวันที่ฉีด ให้แสดงชื่อวัคซีนพร้อมวันที่
+          Timestamp timestamp = value['vaccinationDate'];
+          DateTime date = timestamp.toDate();
+          String formattedDate = "${date.day}/${date.month}/${date.year}";
+          vaccinationTexts.add("$key ($formattedDate)");
+        } else {
+          // ถ้าไม่มีวันที่ แสดงแค่ชื่อวัคซีน
+          vaccinationTexts.add(key);
+        }
+      }
+    });
+
+    return vaccinationTexts.join(', ');
   }
 }

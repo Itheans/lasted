@@ -23,9 +23,31 @@ class _CatEditPageState extends State<CatEditPage> {
     super.initState();
     nameController = TextEditingController(text: widget.cat.name);
     breedController = TextEditingController(text: widget.cat.breed);
-    vaccinationsController =
-        TextEditingController(text: widget.cat.vaccinations);
+    // Convert Map to formatted string
+    vaccinationsController = TextEditingController(
+        text: _formatVaccinations(widget.cat.vaccinations));
     descriptionController = TextEditingController(text: widget.cat.description);
+  }
+
+  // Add this helper method to your class
+  String _formatVaccinations(Map<String, dynamic> vaccinations) {
+    return vaccinations.entries.map((e) => '${e.key}: ${e.value}').join('\n');
+  }
+
+  // Add this helper method to parse vaccinations string back to Map
+  Map<String, dynamic> _parseVaccinations(String vaccinationsText) {
+    Map<String, dynamic> result = {};
+    if (vaccinationsText.isEmpty) return result;
+
+    for (String pair in vaccinationsText.split('\n')) {
+      if (pair.contains(':')) {
+        List<String> parts = pair.split(':');
+        String key = parts[0].trim();
+        String value = parts[1].trim();
+        result[key] = value;
+      }
+    }
+    return result;
   }
 
   @override
@@ -39,11 +61,9 @@ class _CatEditPageState extends State<CatEditPage> {
 
   void _saveChanges() async {
     try {
-      // ดึง user ปัจจุบัน
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) return;
+      User? user = FirebaseAuth.instance.currentUser;
+      if (user == null) throw Exception('No user logged in');
 
-      // อัพเดตข้อมูลแมวใน Firestore
       await FirebaseFirestore.instance
           .collection('users')
           .doc(user.uid)
@@ -52,7 +72,8 @@ class _CatEditPageState extends State<CatEditPage> {
           .update({
         'name': nameController.text,
         'breed': breedController.text,
-        'vaccinations': vaccinationsController.text,
+        'vaccinations':
+            _parseVaccinations(vaccinationsController.text), // Convert to Map
         'description': descriptionController.text,
       });
 
@@ -64,7 +85,8 @@ class _CatEditPageState extends State<CatEditPage> {
           breed: breedController.text,
           imagePath: widget.cat.imagePath,
           birthDate: widget.cat.birthDate,
-          vaccinations: vaccinationsController.text,
+          vaccinations:
+              _parseVaccinations(vaccinationsController.text), // Convert to Map
           description: descriptionController.text,
         ),
       );

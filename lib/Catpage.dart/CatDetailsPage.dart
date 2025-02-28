@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:myproject/Catpage.dart/CatEdid.dart';
 import 'cat.dart';
@@ -153,12 +154,7 @@ class _CatDetailsPageState extends State<CatDetailsPage> {
                           'Unknown',
                       Colors.orange.shade400,
                     ),
-                    _buildInfoRow(
-                      Icons.medical_services,
-                      'Vaccinations',
-                      currentCat.vaccinations,
-                      Colors.orange.shade400,
-                    ),
+                    _buildVaccinationInfo(currentCat),
                     _buildInfoRow(
                       Icons.description,
                       'Description',
@@ -253,6 +249,128 @@ class _CatDetailsPageState extends State<CatDetailsPage> {
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVaccinationInfo(Cat cat) {
+    if (cat.vaccinations.isEmpty) {
+      return _buildInfoRow(
+        Icons.medical_services,
+        'Vaccinations',
+        'No vaccinations',
+        Colors.orange.shade400,
+      );
+    }
+
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(
+          color: Colors.orange.shade400.withOpacity(0.3),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.orange.shade400.withOpacity(0.1),
+            blurRadius: 5,
+            spreadRadius: 1,
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade400.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(Icons.medical_services,
+                    color: Colors.orange.shade400, size: 24),
+              ),
+              const SizedBox(width: 15),
+              Text(
+                'VACCINATIONS',
+                style: TextStyle(
+                  color: Colors.grey.shade600,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 1,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          // แสดงรายการวัคซีนแต่ละชนิด
+          ...cat.vaccinations.entries.map((entry) {
+            final vaccineName = entry.key;
+            final vaccineData = entry.value;
+
+            // ตรวจสอบว่าเป็นข้อมูลวัคซีนแบบใหม่หรือไม่
+            if (vaccineData is Map<String, dynamic> &&
+                vaccineData['isSelected'] == true) {
+              final hasDate = vaccineData['vaccinationDate'] != null;
+              String dateText = '';
+
+              if (hasDate) {
+                final timestamp = vaccineData['vaccinationDate'] as Timestamp;
+                final date = timestamp.toDate();
+                dateText = '${date.day}/${date.month}/${date.year}';
+              }
+
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8.0),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.check_circle, color: Colors.green, size: 18),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            vaccineName,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                            ),
+                          ),
+                          if (hasDate)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 4.0),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.calendar_today,
+                                      size: 14, color: Colors.orange.shade700),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'วันที่ฉีด: $dateText',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.grey.shade700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }
+            return const SizedBox.shrink(); // กรณีไม่ได้เลือกวัคซีนนี้
+          }).toList(),
         ],
       ),
     );

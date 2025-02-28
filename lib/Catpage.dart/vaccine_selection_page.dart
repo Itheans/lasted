@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 class VaccineSelectionPage extends StatefulWidget {
-  final Map<String, Map<String, bool>> initialSelections;
+  final Map<String, Map<String, dynamic>> initialSelections;
 
   const VaccineSelectionPage({
     Key? key,
@@ -13,19 +14,30 @@ class VaccineSelectionPage extends StatefulWidget {
 }
 
 class _VaccineSelectionPageState extends State<VaccineSelectionPage> {
-  late Map<String, Map<String, bool>> vaccinationGroups;
+  late Map<String, Map<String, dynamic>> vaccinationGroups;
+  final DateFormat _dateFormatter = DateFormat('dd/MM/yyyy');
 
   @override
   void initState() {
     super.initState();
-    vaccinationGroups = Map.fromEntries(
-      widget.initialSelections.entries.map(
-        (group) => MapEntry(
-          group.key,
-          Map.fromEntries(group.value.entries),
-        ),
-      ),
-    );
+    // คัดลอกข้อมูลจาก initialSelections และแปลงให้อยู่ในรูปแบบที่ต้องการ
+    vaccinationGroups = {};
+
+    widget.initialSelections.forEach((groupKey, vaccines) {
+      vaccinationGroups[groupKey] = {};
+      vaccines.forEach((vaccineName, value) {
+        // ถ้าค่าที่ได้รับเป็น bool เปลี่ยนเป็น Map ที่มี isSelected และ vaccinationDate
+        if (value is bool) {
+          vaccinationGroups[groupKey]![vaccineName] = {
+            'isSelected': value,
+            'vaccinationDate': null,
+          };
+        } else if (value is Map<String, dynamic>) {
+          // ถ้าเป็น Map อยู่แล้วก็ใช้ค่านั้น
+          vaccinationGroups[groupKey]![vaccineName] = value;
+        }
+      });
+    });
   }
 
   String _getVaccineDescription(String vaccine) {
@@ -43,9 +55,40 @@ class _VaccineSelectionPageState extends State<VaccineSelectionPage> {
   int getSelectedCount() {
     int count = 0;
     vaccinationGroups.forEach((_, vaccines) {
-      count += vaccines.values.where((isSelected) => isSelected).length;
+      count += vaccines.values
+          .where((vaccine) => vaccine['isSelected'] == true)
+          .length;
     });
     return count;
+  }
+
+  // ฟังก์ชันสำหรับเลือกวันที่ฉีดวัคซีน
+  Future<void> _selectVaccinationDate(
+      String groupKey, String vaccineName, BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(2000),
+      lastDate: DateTime.now(),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: ColorScheme.light(
+              primary: Colors.orange,
+              onPrimary: Colors.white,
+              onSurface: Colors.black,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null) {
+      setState(() {
+        vaccinationGroups[groupKey]![vaccineName]['vaccinationDate'] = picked;
+      });
+    }
   }
 
   @override
@@ -93,7 +136,7 @@ class _VaccineSelectionPageState extends State<VaccineSelectionPage> {
               child: Text(
                 'Done',
                 style: TextStyle(
-                  color: Colors.orange.shade700, // เปลี่ยนเป็นสีส้ม
+                  color: Colors.orange.shade700,
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                 ),
@@ -107,7 +150,7 @@ class _VaccineSelectionPageState extends State<VaccineSelectionPage> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Colors.orange.shade50, Colors.white], // เปลี่ยนเป็นสีส้ม
+            colors: [Colors.orange.shade50, Colors.white],
           ),
         ),
         child: ListView.builder(
@@ -131,10 +174,11 @@ class _VaccineSelectionPageState extends State<VaccineSelectionPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // ส่วนหัวของกลุ่มวัคซีน
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.orange.shade50, // เปลี่ยนเป็นสีส้ม
+                      color: Colors.orange.shade50,
                       borderRadius: const BorderRadius.only(
                         topLeft: Radius.circular(15),
                         topRight: Radius.circular(15),
@@ -145,12 +189,12 @@ class _VaccineSelectionPageState extends State<VaccineSelectionPage> {
                         Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: Colors.orange.shade100, // เปลี่ยนเป็นสีส้ม
+                            color: Colors.orange.shade100,
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Icon(
                             Icons.medical_services,
-                            color: Colors.orange.shade700, // เปลี่ยนเป็นสีส้ม
+                            color: Colors.orange.shade700,
                             size: 20,
                           ),
                         ),
@@ -160,64 +204,121 @@ class _VaccineSelectionPageState extends State<VaccineSelectionPage> {
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
-                            color: Colors.orange.shade700, // เปลี่ยนเป็นสีส้ม
+                            color: Colors.orange.shade700,
                           ),
                         ),
                       ],
                     ),
                   ),
-                  ...group.value.entries
-                      .map((vaccine) => Container(
-                            decoration: BoxDecoration(
-                              border: Border(
-                                bottom: BorderSide(
-                                  color: Colors.grey.shade100,
-                                  width: 1,
-                                ),
+                  // รายการวัคซีนในกลุ่ม
+                  ...group.value.entries.map((vaccine) {
+                    bool isSelected = vaccine.value['isSelected'] ?? false;
+                    DateTime? vaccinationDate =
+                        vaccine.value['vaccinationDate'];
+
+                    return Column(
+                      children: [
+                        Container(
+                          decoration: BoxDecoration(
+                            border: Border(
+                              bottom: BorderSide(
+                                color: Colors.grey.shade100,
+                                width: 1,
                               ),
                             ),
-                            child: ListTile(
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 8,
-                              ),
-                              leading: Transform.scale(
-                                scale: 1.2,
-                                child: Checkbox(
-                                  value: vaccine.value,
-                                  activeColor:
-                                      Colors.orange, // เปลี่ยนเป็นสีส้ม
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  onChanged: (bool? value) {
-                                    setState(() {
-                                      vaccinationGroups[group.key]![
-                                          vaccine.key] = value ?? false;
-                                    });
-                                  },
+                          ),
+                          child: ListTile(
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
+                            leading: Transform.scale(
+                              scale: 1.2,
+                              child: Checkbox(
+                                value: isSelected,
+                                activeColor: Colors.orange,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(4),
                                 ),
-                              ),
-                              title: Text(
-                                vaccine.key,
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              subtitle: Padding(
-                                padding: const EdgeInsets.only(top: 4),
-                                child: Text(
-                                  _getVaccineDescription(vaccine.key),
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.grey.shade600,
-                                  ),
-                                ),
+                                onChanged: (bool? value) {
+                                  setState(() {
+                                    vaccinationGroups[group.key]![vaccine.key]
+                                        ['isSelected'] = value ?? false;
+                                  });
+                                },
                               ),
                             ),
-                          ))
-                      .toList(),
+                            title: Text(
+                              vaccine.key,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 4),
+                                  child: Text(
+                                    _getVaccineDescription(vaccine.key),
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.grey.shade600,
+                                    ),
+                                  ),
+                                ),
+                                if (isSelected) // แสดงส่วนเลือกวันที่เมื่อเลือกวัคซีน
+                                  InkWell(
+                                    onTap: () => _selectVaccinationDate(
+                                        group.key, vaccine.key, context),
+                                    child: Padding(
+                                      padding: const EdgeInsets.only(top: 8.0),
+                                      child: Row(
+                                        children: [
+                                          Icon(Icons.calendar_today,
+                                              size: 16,
+                                              color: Colors.orange.shade700),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            vaccinationDate != null
+                                                ? 'วันที่ฉีด: ${_dateFormatter.format(vaccinationDate)}'
+                                                : 'เลือกวันที่ฉีดวัคซีน',
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              color: vaccinationDate != null
+                                                  ? Colors.orange.shade700
+                                                  : Colors.grey.shade600,
+                                              fontWeight:
+                                                  vaccinationDate != null
+                                                      ? FontWeight.bold
+                                                      : FontWeight.normal,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            trailing: isSelected
+                                ? IconButton(
+                                    icon: Icon(
+                                      Icons.calendar_month,
+                                      color: Colors.orange.shade700,
+                                    ),
+                                    onPressed: () => _selectVaccinationDate(
+                                      group.key,
+                                      vaccine.key,
+                                      context,
+                                    ),
+                                  )
+                                : null,
+                          ),
+                        ),
+                      ],
+                    );
+                  }).toList(),
                 ],
               ),
             );

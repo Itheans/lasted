@@ -19,23 +19,48 @@ class _CatRegistrationPageState extends State<CatRegistrationPage> {
   DateTime? birthDate;
   bool isLoading = false;
 
-  Map<String, Map<String, bool>> vaccinationGroups = {
+  // เปลี่ยนจากการใช้ Map<String, Map<String, bool>> เป็น Map<String, Map<String, dynamic>>
+  // เพื่อเก็บข้อมูลวันที่ฉีดวัคซีน
+  Map<String, Map<String, dynamic>> vaccinationGroups = {
     'Core Vaccines': {
-      'FPV (Feline Panleukopenia)': false,
-      'FHV (Feline Viral Rhinotracheitis)': false,
-      'FCV (Feline Calicivirus)': false,
+      'FPV (Feline Panleukopenia)': {
+        'isSelected': false,
+        'vaccinationDate': null
+      },
+      'FHV (Feline Viral Rhinotracheitis)': {
+        'isSelected': false,
+        'vaccinationDate': null
+      },
+      'FCV (Feline Calicivirus)': {
+        'isSelected': false,
+        'vaccinationDate': null
+      },
     },
     'Non-Core Vaccines': {
-      'FeLV (Feline Leukemia Virus)': false,
-      'Rabies': false,
+      'FeLV (Feline Leukemia Virus)': {
+        'isSelected': false,
+        'vaccinationDate': null
+      },
+      'Rabies': {'isSelected': false, 'vaccinationDate': null},
     },
   };
 
   String getSelectedVaccinations() {
     List<String> selected = [];
     vaccinationGroups.forEach((group, vaccines) {
-      vaccines.forEach((vaccine, isSelected) {
-        if (isSelected) selected.add(vaccine);
+      vaccines.forEach((vaccine, data) {
+        if (data['isSelected'] == true) {
+          if (data['vaccinationDate'] != null) {
+            // ถ้ามีวันที่ฉีด ให้แสดงชื่อวัคซีนพร้อมวันที่
+            Timestamp timestamp = data['vaccinationDate'];
+            DateTime date = timestamp.toDate();
+            String formattedDate = "${date.day}/${date.month}/${date.year}";
+            selected.add("$vaccine ($formattedDate)");
+          } else {
+            // ถ้าไม่มีวันที่ แสดงแค่ชื่อวัคซีน
+            selected.add(vaccine);
+          }
+        }
       });
     });
     return selected.join(', ');
@@ -217,7 +242,8 @@ class _CatRegistrationPageState extends State<CatRegistrationPage> {
         const SizedBox(height: 10),
         InkWell(
           onTap: () async {
-            final result = await Navigator.push<Map<String, Map<String, bool>>>(
+            final result =
+                await Navigator.push<Map<String, Map<String, dynamic>>>(
               context,
               MaterialPageRoute(
                 builder: (context) => VaccineSelectionPage(
@@ -314,21 +340,38 @@ class _CatRegistrationPageState extends State<CatRegistrationPage> {
         return;
       }
 
-      Cat newCat = Cat(
-        id: '', // กำหนดค่า id เป็นค่าว่าง
-        name: nameController.text,
-        breed: breedController.text,
-        imagePath: '', // ค่า imagePath สามารถแก้ไขในภายหลังได้
-        birthDate: Timestamp.fromDate(birthDate!),
-        vaccinations: getSelectedVaccinations(),
-        description: descriptionController.text, // ระบุค่า description
-      );
+      // แปลงข้อมูลวัคซีนจาก Map ในรูปแบบที่เราใช้ในหน้าจอให้เป็นรูปแบบที่จะบันทึกใน Firestore
+      Map<String, dynamic> vaccinationsData = {};
+      vaccinationGroups.forEach((group, vaccines) {
+        vaccines.forEach((vaccine, data) {
+          if (data['isSelected'] == true) {
+            vaccinationsData[vaccine] = {
+              'isSelected': true,
+              'vaccinationDate': data['vaccinationDate'],
+              'group': group // เพิ่มข้อมูลว่าวัคซีนนี้อยู่ในกลุ่มไหน
+            };
+          }
+        });
+      });
+
+      // สร้างข้อมูลแมวที่จะบันทึก
+      Map<String, dynamic> catData = {
+        'name': nameController.text,
+        'breed': breedController.text,
+        'imagePath': '', // ค่า imagePath สามารถแก้ไขในภายหลังได้
+        'birthDate': Timestamp.fromDate(birthDate!),
+        'vaccinations': vaccinationsData,
+        'description': descriptionController.text,
+        'isForSitting': false,
+        'sittingStatus': null,
+        'lastSittingDate': null,
+      };
 
       await FirebaseFirestore.instance
           .collection('users')
           .doc(user.uid)
           .collection('cats')
-          .add(newCat.toMap());
+          .add(catData);
 
       showDialog(
         context: context,

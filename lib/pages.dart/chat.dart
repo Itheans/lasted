@@ -380,19 +380,53 @@ class ChatRoomListTile extends StatefulWidget {
 class _ChatRoomListState extends State<ChatRoomListTile> {
   String profilePicUrl = "", name = "", username = "", role = "";
 
-  getthisUserInfo() async {
-    username =
-        widget.chatRoomId.replaceAll("_", '').replaceAll(widget.myUsername, "");
+  Future<void> getthisUserInfo() async {
+    try {
+      username = widget.chatRoomId
+          .replaceAll("_", '')
+          .replaceAll(widget.myUsername, "");
 
-    QuerySnapshot querySnapshot =
-        await DatabaseMethods().getUserInfo(username.toUpperCase());
-    if (querySnapshot.docs.isNotEmpty) {
-      final userData = querySnapshot.docs[0].data() as Map<String, dynamic>;
-      setState(() {
-        name = userData['name'] ?? '';
-        profilePicUrl = userData['photo'] ?? '';
-        role = userData['role'] ?? '';
-      });
+      // เพิ่มการตรวจสอบค่าว่าง
+      if (username.isEmpty) {
+        setState(() {
+          name = "Unknown User";
+          profilePicUrl = "";
+          role = "";
+        });
+        return;
+      }
+
+      QuerySnapshot querySnapshot =
+          await DatabaseMethods().getUserInfo(username.toUpperCase());
+
+      if (querySnapshot.docs.isNotEmpty) {
+        final userData = querySnapshot.docs[0].data() as Map<String, dynamic>;
+        if (mounted) {
+          setState(() {
+            name = userData['name'] ?? 'Unknown User';
+            profilePicUrl = userData['photo'] ?? '';
+            role = userData['role'] ?? '';
+          });
+        }
+      } else {
+        // กรณีไม่พบข้อมูลผู้ใช้
+        if (mounted) {
+          setState(() {
+            name = "Unknown User";
+            profilePicUrl = "";
+            role = "";
+          });
+        }
+      }
+    } catch (e) {
+      print('Error fetching user info: $e');
+      if (mounted) {
+        setState(() {
+          name = "Error Loading User";
+          profilePicUrl = "";
+          role = "";
+        });
+      }
     }
   }
 
@@ -447,12 +481,18 @@ class _ChatRoomListState extends State<ChatRoomListTile> {
                 color: Colors.grey[200],
               ),
               child: profilePicUrl.isEmpty
-                  ? Center(child: CircularProgressIndicator())
+                  ? Center(
+                      child:
+                          Icon(Icons.person, color: Colors.grey[600], size: 30))
                   : ClipRRect(
                       borderRadius: BorderRadius.circular(30),
                       child: Image.network(
                         profilePicUrl,
                         fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Icon(Icons.person,
+                              color: Colors.grey[600], size: 30);
+                        },
                       ),
                     ),
             ),

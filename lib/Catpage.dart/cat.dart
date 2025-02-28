@@ -112,10 +112,25 @@ class Cat {
       if (value is Map && value['isSelected'] == true) {
         if (value['vaccinationDate'] != null) {
           // ถ้ามีวันที่ฉีด ให้แสดงชื่อวัคซีนพร้อมวันที่
-          Timestamp timestamp = value['vaccinationDate'];
-          DateTime date = timestamp.toDate();
-          String formattedDate = "${date.day}/${date.month}/${date.year}";
-          vaccinationTexts.add("$key ($formattedDate)");
+          String formattedDate = '';
+          if (value['vaccinationDate'] is Timestamp) {
+            Timestamp timestamp = value['vaccinationDate'];
+            DateTime date = timestamp.toDate();
+            formattedDate = "${date.day}/${date.month}/${date.year}";
+          } else if (value['vaccinationDate'] is DateTime) {
+            DateTime date = value['vaccinationDate'];
+            formattedDate = "${date.day}/${date.month}/${date.year}";
+          }
+
+          // เพิ่ม Log เพื่อตรวจสอบ
+          print(
+              'Vaccination date for $key: ${value['vaccinationDate']} - Formatted: $formattedDate');
+
+          if (formattedDate.isNotEmpty) {
+            vaccinationTexts.add("$key ($formattedDate)");
+          } else {
+            vaccinationTexts.add(key);
+          }
         } else {
           // ถ้าไม่มีวันที่ แสดงแค่ชื่อวัคซีน
           vaccinationTexts.add(key);

@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -86,7 +87,14 @@ class _VaccineSelectionPageState extends State<VaccineSelectionPage> {
 
     if (picked != null) {
       setState(() {
-        vaccinationGroups[groupKey]![vaccineName]['vaccinationDate'] = picked;
+        // แปลงเป็น Timestamp ก่อนเก็บในตัวแปร
+        vaccinationGroups[groupKey]![vaccineName]['vaccinationDate'] =
+            Timestamp.fromDate(picked);
+
+        // เพิ่ม Log เพื่อตรวจสอบ
+        print('Selected date for $vaccineName: $picked');
+        print(
+            'Stored as Timestamp: ${vaccinationGroups[groupKey]![vaccineName]['vaccinationDate']}');
       });
     }
   }
@@ -282,7 +290,7 @@ class _VaccineSelectionPageState extends State<VaccineSelectionPage> {
                                           const SizedBox(width: 4),
                                           Text(
                                             vaccinationDate != null
-                                                ? 'วันที่ฉีด: ${_dateFormatter.format(vaccinationDate)}'
+                                                ? 'วันที่ฉีด: ${_formatDate(vaccinationDate)}'
                                                 : 'เลือกวันที่ฉีดวัคซีน',
                                             style: TextStyle(
                                               fontSize: 13,
@@ -326,5 +334,15 @@ class _VaccineSelectionPageState extends State<VaccineSelectionPage> {
         ),
       ),
     );
+  }
+
+  String _formatDate(dynamic date) {
+    if (date is Timestamp) {
+      final dateTime = date.toDate();
+      return _dateFormatter.format(dateTime);
+    } else if (date is DateTime) {
+      return _dateFormatter.format(date);
+    }
+    return 'Invalid date';
   }
 }

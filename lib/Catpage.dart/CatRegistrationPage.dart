@@ -341,15 +341,32 @@ class _CatRegistrationPageState extends State<CatRegistrationPage> {
       }
 
       // แปลงข้อมูลวัคซีนจาก Map ในรูปแบบที่เราใช้ในหน้าจอให้เป็นรูปแบบที่จะบันทึกใน Firestore
+      // แปลงข้อมูลวัคซีนจาก Map ในรูปแบบที่เราใช้ในหน้าจอให้เป็นรูปแบบที่จะบันทึกใน Firestore
       Map<String, dynamic> vaccinationsData = {};
       vaccinationGroups.forEach((group, vaccines) {
         vaccines.forEach((vaccine, data) {
           if (data['isSelected'] == true) {
-            vaccinationsData[vaccine] = {
+            var vaccinationInfo = {
               'isSelected': true,
-              'vaccinationDate': data['vaccinationDate'],
               'group': group // เพิ่มข้อมูลว่าวัคซีนนี้อยู่ในกลุ่มไหน
             };
+
+            // ตรวจสอบว่ามีข้อมูลวันที่หรือไม่ ถ้ามีให้แปลงเป็น Timestamp ก่อนบันทึก
+            if (data['vaccinationDate'] != null) {
+              // บันทึกวันที่เป็น Timestamp ทุกกรณี
+              if (data['vaccinationDate'] is DateTime) {
+                vaccinationInfo['vaccinationDate'] =
+                    Timestamp.fromDate(data['vaccinationDate']);
+              } else if (data['vaccinationDate'] is Timestamp) {
+                vaccinationInfo['vaccinationDate'] = data['vaccinationDate'];
+              }
+
+              // เพิ่ม Log เพื่อตรวจสอบ
+              print(
+                  'Saving vaccination date for $vaccine: ${vaccinationInfo['vaccinationDate']}');
+            }
+
+            vaccinationsData[vaccine] = vaccinationInfo;
           }
         });
       });

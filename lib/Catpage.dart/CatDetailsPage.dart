@@ -321,9 +321,18 @@ class _CatDetailsPageState extends State<CatDetailsPage> {
               String dateText = '';
 
               if (hasDate) {
-                final timestamp = vaccineData['vaccinationDate'] as Timestamp;
-                final date = timestamp.toDate();
-                dateText = '${date.day}/${date.month}/${date.year}';
+                Timestamp? timestamp;
+                if (vaccineData['vaccinationDate'] is Timestamp) {
+                  timestamp = vaccineData['vaccinationDate'] as Timestamp;
+                } else if (vaccineData['vaccinationDate'] is DateTime) {
+                  timestamp = Timestamp.fromDate(
+                      vaccineData['vaccinationDate'] as DateTime);
+                }
+
+                if (timestamp != null) {
+                  final date = timestamp.toDate();
+                  dateText = '${date.day}/${date.month}/${date.year}';
+                }
               }
 
               return Padding(

@@ -3,7 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:myproject/Admin.dart/AdminPage.dart';
+import 'package:myproject/Admin/adminpage.dart';
 import 'package:myproject/Catpage.dart/CatDetailsPage.dart';
 import 'package:myproject/Catpage.dart/CatRegistrationPage.dart';
 import 'package:myproject/page2.dart/homesitter.dart';
@@ -27,7 +27,8 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
+    return MaterialApp(
+      title: 'Cat Sitter App',
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
@@ -38,7 +39,16 @@ class MyApp extends StatelessWidget {
         Locale('ar', 'TH'),
       ],
       debugShowCheckedModeBanner: false,
-      home: LogIn(),
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+        visualDensity: VisualDensity.adaptivePlatformDensity,
+      ),
+      initialRoute: '/',
+      routes: {
+        '/': (context) => const LogIn(),
+        '/signup': (context) => const SignUp(),
+        '/admin': (context) => const AdminPage(), // เพิ่ม route สำหรับ admin
+      },
     );
   }
 }

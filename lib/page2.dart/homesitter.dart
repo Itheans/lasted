@@ -48,22 +48,20 @@ class _Home2State extends State<Home2> {
       final currentUser = FirebaseAuth.instance.currentUser;
       if (currentUser == null) return;
 
-      // ใช้ชื่อ collection เดียวกับในหน้ารายละเอียด
+      // แก้ตรงนี้: เปลี่ยนจาก 'bookings' เป็น 'booking_requests'
       final snapshot = await FirebaseFirestore.instance
-          .collection('booking_requests') // ต้องใช้ collection เดียวกัน
+          .collection('booking_requests') // เปลี่ยนชื่อ collection ตรงนี้
           .where('sitterId', isEqualTo: currentUser.uid)
           .where('status', isEqualTo: 'pending')
           .get();
 
+      // เพิ่มโค้ดดีบักเพื่อตรวจสอบ
+      print("homesitter - UID ของผู้ใช้ปัจจุบัน: ${currentUser.uid}");
+      print("homesitter - พบคำขอรอยืนยัน: ${snapshot.docs.length} รายการ");
+
       setState(() {
         pendingBookingsCount = snapshot.docs.length;
       });
-
-      // เพิ่ม log เพื่อตรวจสอบ
-      print("Found ${snapshot.docs.length} pending bookings");
-      for (var doc in snapshot.docs) {
-        print("Booking data: ${doc.data()}");
-      }
     } catch (e) {
       print('Error fetching pending bookings count: $e');
     }
@@ -239,15 +237,14 @@ class _Home2State extends State<Home2> {
                           ],
                         ),
                       ),
-                      ElevatedButton.icon(
+                      ElevatedButton(
                         onPressed: () {
-                          _updateTaskState(TaskType.booking);
+                          // แก้ไขเป็น:
+                          print("กำลังเปิดหน้าคำขอฝากเลี้ยง");
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              // ต้องแน่ใจว่าเรียกไปยังหน้าที่ถูกต้อง
-                              builder: (context) =>
-                                  const BookingAcceptancePage(),
+                              builder: (context) => BookingAcceptancePage(),
                             ),
                           ).then((_) => _fetchPendingBookingsCount());
                         },
@@ -255,7 +252,7 @@ class _Home2State extends State<Home2> {
                           backgroundColor: Colors.white,
                           foregroundColor: Colors.orange,
                         ),
-                        label: const Text('จัดการทันที'),
+                        child: const Text('จัดการทันที'),
                       ),
                     ],
                   ),

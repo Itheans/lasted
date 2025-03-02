@@ -37,47 +37,39 @@ class _BookingAcceptancePageState extends State<BookingAcceptancePage> {
 
   // โหลดข้อมูลการจอง
   Future<void> _loadBookings() async {
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
 
     try {
       final User? currentUser = _auth.currentUser;
       if (currentUser == null) {
-        // ไม่ได้เข้าสู่ระบบ
-        setState(() {
-          _isLoading = false;
-        });
+        setState(() => _isLoading = false);
         return;
       }
 
-      Query query;
-      if (_filterStatus == 'all') {
-        // ถ้าต้องการดูทั้งหมด ไม่ต้องใช้ where status
-        query = _firestore
-            .collection('booking_requests') // เปลี่ยนเป็น collection ที่ถูกต้อง
-            .where('sitterId', isEqualTo: currentUser.uid)
-            .where('status', isEqualTo: _filterStatus)
-            .orderBy('createdAt', descending: true)
-            .limit(10);
-      } else {
-        // สำหรับกรณีกรองตามสถานะ
-        query = _firestore
-            .collection('booking_requests') // เปลี่ยนเป็น collection ที่ถูกต้อง
-            .where('sitterId', isEqualTo: currentUser.uid)
-            .where('status', isEqualTo: _filterStatus)
-            .orderBy('createdAt', descending: true)
-            .limit(10);
-      }
-    } catch (e) {
-      print('Error loading bookings: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('เกิดข้อผิดพลาดในการโหลดข้อมูล: $e')),
-      );
-    } finally {
+      // แก้ตรงนี้: เปลี่ยนจาก 'bookings' เป็น 'booking_requests'
+      Query query = _firestore
+          .collection('booking_requests') // เปลี่ยนชื่อ collection ตรงนี้
+          .where('sitterId', isEqualTo: currentUser.uid)
+          .where('status', isEqualTo: _filterStatus)
+          .orderBy('createdAt', descending: true)
+          .limit(10);
+
+      // เพิ่มโค้ดดีบักเพื่อตรวจสอบ
+      print("กำลังค้นหาใน collection: booking_requests");
+      print("UID ของผู้ใช้ปัจจุบัน: ${currentUser.uid}");
+      print("กำลังกรองด้วย status: ${_filterStatus}");
+
+      QuerySnapshot snapshot = await query.get();
+      print("พบข้อมูลจำนวน: ${snapshot.docs.length} รายการ");
+
+      // ส่วนการอัปเดต UI ยังคงเหมือนเดิม
       setState(() {
+        _bookings = snapshot.docs;
         _isLoading = false;
       });
+    } catch (e) {
+      print('Error loading bookings: $e');
+      setState(() => _isLoading = false);
     }
   }
 
@@ -94,7 +86,7 @@ class _BookingAcceptancePageState extends State<BookingAcceptancePage> {
       if (currentUser == null) return;
 
       Query query = _firestore
-          .collection('booking_requests') // เปลี่ยนเป็น collection ที่ถูกต้อง
+          .collection('bookings')
           .where('sitterId', isEqualTo: currentUser.uid)
           .where('status', isEqualTo: _filterStatus)
           .orderBy('createdAt', descending: true)
@@ -465,6 +457,31 @@ class _BookingAcceptancePageState extends State<BookingAcceptancePage> {
     });
   }
 
+  // เพิ่มเมธอดนี้ในคลาส _BookingAcceptancePageState
+  Future<void> _debugCheckAllData() async {
+    try {
+      final User? currentUser = _auth.currentUser;
+      if (currentUser == null) return;
+
+      // ลองดึงข้อมูลโดยไม่มีเงื่อนไขเพิ่มเติมเพื่อดูว่ามีข้อมูลหรือไม่
+      final allDocsSnapshot = await _firestore
+          .collection('booking_requests')
+          .where('sitterId', isEqualTo: currentUser.uid)
+          .get();
+
+      print("พบข้อมูลทั้งหมด: ${allDocsSnapshot.docs.length} รายการ");
+
+      // แสดงข้อมูลทั้งหมดเพื่อตรวจสอบโครงสร้าง
+      for (var doc in allDocsSnapshot.docs) {
+        Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+        print("Document ID: ${doc.id}");
+        print("Document data: $data");
+      }
+    } catch (e) {
+      print("Error checking all data: $e");
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -525,8 +542,12 @@ class _BookingAcceptancePageState extends State<BookingAcceptancePage> {
                               ),
                             ),
                             const SizedBox(height: 20),
+                            // เพิ่มปุ่มเพื่อโหลดข้อมูลใหม่และเรียกเมธอดดีบัก
                             ElevatedButton.icon(
-                              onPressed: _loadBookings,
+                              onPressed: () {
+                                _loadBookings();
+                                _debugCheckAllData(); // เพิ่มเมธอดนี้
+                              },
                               icon: Icon(Icons.refresh),
                               label: Text('โหลดใหม่'),
                               style: ElevatedButton.styleFrom(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
+import 'package:myproject/page2.dart/scheduleincomepage.dart';
 import 'package:myproject/widget/widget_support.dart';
 
 class BookingAcceptancePage extends StatefulWidget {
@@ -26,6 +27,7 @@ class _BookingAcceptancePageState extends State<BookingAcceptancePage> {
 
   // ตัวกรอง
   String _filterStatus = 'pending'; // pending, accepted, rejected
+  String? errorMessage;
 
   @override
   void initState() {
@@ -49,25 +51,23 @@ class _BookingAcceptancePageState extends State<BookingAcceptancePage> {
         return;
       }
 
-      Query query = _firestore
-          .collection('bookings')
-          .where('sitterId', isEqualTo: currentUser.uid)
-          .where('status', isEqualTo: _filterStatus)
-          .orderBy('createdAt', descending: true)
-          .limit(10);
-
-      QuerySnapshot snapshot = await query.get();
-
-      if (snapshot.docs.isNotEmpty) {
-        _lastVisible = snapshot.docs[snapshot.docs.length - 1];
-        setState(() {
-          _bookings = snapshot.docs;
-          _isMoreDataAvailable = true;
-        });
+      Query query;
+      if (_filterStatus == 'all') {
+        // ถ้าต้องการดูทั้งหมด ไม่ต้องใช้ where status
+        query = _firestore
+            .collection('booking_requests') // เปลี่ยนเป็น collection ที่ถูกต้อง
+            .where('sitterId', isEqualTo: currentUser.uid)
+            .where('status', isEqualTo: _filterStatus)
+            .orderBy('createdAt', descending: true)
+            .limit(10);
       } else {
-        setState(() {
-          _isMoreDataAvailable = false;
-        });
+        // สำหรับกรณีกรองตามสถานะ
+        query = _firestore
+            .collection('booking_requests') // เปลี่ยนเป็น collection ที่ถูกต้อง
+            .where('sitterId', isEqualTo: currentUser.uid)
+            .where('status', isEqualTo: _filterStatus)
+            .orderBy('createdAt', descending: true)
+            .limit(10);
       }
     } catch (e) {
       print('Error loading bookings: $e');
@@ -94,7 +94,7 @@ class _BookingAcceptancePageState extends State<BookingAcceptancePage> {
       if (currentUser == null) return;
 
       Query query = _firestore
-          .collection('bookings')
+          .collection('booking_requests') // เปลี่ยนเป็น collection ที่ถูกต้อง
           .where('sitterId', isEqualTo: currentUser.uid)
           .where('status', isEqualTo: _filterStatus)
           .orderBy('createdAt', descending: true)
@@ -115,10 +115,10 @@ class _BookingAcceptancePageState extends State<BookingAcceptancePage> {
         });
       }
     } catch (e) {
-      print('Error loading more bookings: $e');
-    } finally {
+      print('Error loading bookings: $e');
       setState(() {
-        _isLoadingMore = false;
+        _isLoading = false;
+        errorMessage = 'ไม่สามารถโหลดข้อมูลได้ กรุณาลองใหม่อีกครั้ง';
       });
     }
   }
@@ -269,6 +269,34 @@ class _BookingAcceptancePageState extends State<BookingAcceptancePage> {
                         return const Padding(
                           padding: EdgeInsets.all(10),
                           child: Text('ไม่พบข้อมูลแมว'),
+                        );
+                      }
+                      if (errorMessage != null) {
+                        return Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.error_outline,
+                                  size: 64, color: Colors.red[300]),
+                              const SizedBox(height: 16),
+                              Text(
+                                errorMessage!,
+                                style: TextStyle(
+                                    fontSize: 16, color: Colors.red[700]),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 24),
+                              ElevatedButton(
+                                onPressed: () {
+                                  setState(() {
+                                    errorMessage = null;
+                                  });
+                                  _loadBookings();
+                                },
+                                child: const Text('ลองใหม่'),
+                              ),
+                            ],
+                          ),
                         );
                       }
 
@@ -442,7 +470,7 @@ class _BookingAcceptancePageState extends State<BookingAcceptancePage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text(
-          'การจองของฉัน',
+          'คำขอฝากเลี้ยงแมว',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         backgroundColor: Colors.teal,
@@ -453,13 +481,23 @@ class _BookingAcceptancePageState extends State<BookingAcceptancePage> {
           // ส่วนแถบตัวกรอง
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            color: Colors.teal.shade50,
+            decoration: BoxDecoration(
+              color: Colors.teal.shade50,
+              border: Border(
+                bottom: BorderSide(color: Colors.teal.shade200, width: 1),
+              ),
+            ),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                _buildFilterButton('รอการยืนยัน', 'pending'),
-                _buildFilterButton('ยอมรับแล้ว', 'accepted'),
-                _buildFilterButton('ปฏิเสธแล้ว', 'rejected'),
+                Expanded(
+                  child: _buildFilterButton('รอการยืนยัน', 'pending'),
+                ),
+                Expanded(
+                  child: _buildFilterButton('ยอมรับแล้ว', 'accepted'),
+                ),
+                Expanded(
+                  child: _buildFilterButton('ปฏิเสธแล้ว', 'rejected'),
+                ),
               ],
             ),
           ),
@@ -480,25 +518,28 @@ class _BookingAcceptancePageState extends State<BookingAcceptancePage> {
                             ),
                             const SizedBox(height: 16),
                             Text(
-                              'ไม่พบรายการจอง',
+                              'ไม่พบรายการคำขอฝากเลี้ยง',
                               style: TextStyle(
                                 fontSize: 18,
                                 color: Colors.grey[600],
                               ),
                             ),
+                            const SizedBox(height: 20),
+                            ElevatedButton.icon(
+                              onPressed: _loadBookings,
+                              icon: Icon(Icons.refresh),
+                              label: Text('โหลดใหม่'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.teal,
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: 20, vertical: 12),
+                              ),
+                            ),
                           ],
                         ),
                       )
-                    : NotificationListener<ScrollNotification>(
-                        onNotification: (ScrollNotification scrollInfo) {
-                          if (scrollInfo.metrics.pixels ==
-                                  scrollInfo.metrics.maxScrollExtent &&
-                              _isMoreDataAvailable &&
-                              !_isLoadingMore) {
-                            _loadMoreBookings();
-                          }
-                          return false;
-                        },
+                    : RefreshIndicator(
+                        onRefresh: _loadBookings, // เพิ่มการรีเฟรชเมื่อดึงลง
                         child: ListView.builder(
                           padding: const EdgeInsets.all(12),
                           itemCount:
@@ -520,35 +561,46 @@ class _BookingAcceptancePageState extends State<BookingAcceptancePage> {
           ),
         ],
       ),
+      // เพิ่ม Floating Action Button สำหรับดูรายได้และตารางงาน
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ScheduleIncomePage(),
+            ),
+          );
+        },
+        icon: const Icon(Icons.calendar_month),
+        label: const Text('ตารางงาน'),
+        backgroundColor: Colors.teal,
+      ),
     );
   }
 
   Widget _buildFilterButton(String title, String status) {
     final isSelected = _filterStatus == status;
-
     return GestureDetector(
       onTap: () {
         if (_filterStatus != status) {
-          setState(() {
-            _filterStatus = status;
-            _bookings = [];
-            _lastVisible = null;
-          });
+          setState(() => _filterStatus = status);
           _loadBookings();
         }
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(vertical: 8),
         decoration: BoxDecoration(
           color: isSelected ? Colors.teal : Colors.white,
           borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: Colors.teal.withOpacity(0.4),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+                ]
+              : null,
         ),
         child: Text(
           title,
@@ -556,6 +608,7 @@ class _BookingAcceptancePageState extends State<BookingAcceptancePage> {
             color: isSelected ? Colors.white : Colors.black87,
             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
           ),
+          textAlign: TextAlign.center,
         ),
       ),
     );

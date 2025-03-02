@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:myproject/Catpage.dart/cat_history.dart';
 import 'package:myproject/page2.dart/location/location.dart';
@@ -19,6 +21,33 @@ class _MyWidgetState extends State<Home> {
   bool cat = false, paw = false, backpack = false, ball = false;
 
   @override
+  int pendingBookingsCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchPendingBookingsCount();
+  }
+
+  Future<void> _fetchPendingBookingsCount() async {
+    try {
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) return;
+
+      final snapshot = await FirebaseFirestore.instance
+          .collection('bookings')
+          .where('userId', isEqualTo: currentUser.uid)
+          .where('status', isEqualTo: 'pending')
+          .get();
+
+      setState(() {
+        pendingBookingsCount = snapshot.docs.length;
+      });
+    } catch (e) {
+      print('Error fetching pending bookings count: $e');
+    }
+  }
+
   Widget build(BuildContext context) {
     return Scaffold(
         backgroundColor: Colors.grey[50],
@@ -198,42 +227,67 @@ class _MyWidgetState extends State<Home> {
     return SingleChildScrollView(
       child: Column(
         children: [
-          // เพิ่มปุ่มเตรียมแมวสำหรับฝากเลี้ยง
-          Container(
-            margin: const EdgeInsets.symmetric(vertical: 16),
-            child: ElevatedButton.icon(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const PrepareCatsForSittingPage(),
-                  ),
-                );
-              },
-              icon: const Icon(Icons.pets, color: Colors.white),
-              label: const Text(
-                'เตรียมแมวสำหรับฝากเลี้ยง',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
+          // เพิ่มแบนเนอร์แจ้งเตือนการจองที่รอยืนยัน
+          if (pendingBookingsCount > 0)
+            Container(
+              margin: const EdgeInsets.symmetric(vertical: 16),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.orange.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.orange),
               ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.orange,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 12,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(30),
-                ),
-                elevation: 3,
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.orange,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Text(
+                      pendingBookingsCount.toString(),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'การจองที่รอการยืนยัน',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                        Text(
+                          'คุณมี $pendingBookingsCount การจองที่กำลังรอการยืนยัน',
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                      ],
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => BookingStatusScreen(),
+                        ),
+                      ).then((_) => _fetchPendingBookingsCount());
+                    },
+                    child: const Text('ดูเลย'),
+                  ),
+                ],
               ),
             ),
-          ),
 
-          // เพิ่มปุ่มดูสถานะการฝากเลี้ยง
+          // ปุ่มดูสถานะการฝากเลี้ยง (ที่มีอยู่แล้ว)
           Container(
             margin: const EdgeInsets.symmetric(vertical: 8),
             child: ElevatedButton.icon(
@@ -243,9 +297,38 @@ class _MyWidgetState extends State<Home> {
                   MaterialPageRoute(
                     builder: (context) => BookingStatusScreen(),
                   ),
-                );
+                ).then((_) => _fetchPendingBookingsCount());
               },
-              icon: const Icon(Icons.list_alt, color: Colors.white),
+              icon: Stack(
+                children: [
+                  const Icon(Icons.list_alt, color: Colors.white),
+                  if (pendingBookingsCount > 0)
+                    Positioned(
+                      right: 0,
+                      top: 0,
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: const BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 12,
+                          minHeight: 12,
+                        ),
+                        child: Text(
+                          pendingBookingsCount.toString(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 8,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
               label: const Text(
                 'สถานะการฝากเลี้ยง',
                 style: TextStyle(

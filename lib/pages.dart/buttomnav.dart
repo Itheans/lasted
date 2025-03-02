@@ -1,4 +1,6 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:curved_navigation_bar/curved_navigation_bar.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:myproject/pages.dart/chat.dart';
 import 'package:myproject/pages.dart/home.dart';
@@ -20,6 +22,7 @@ class _MyWidgetState extends State<BottomNav> {
   late Chat chat;
   late Profile profile;
   late Payment payment;
+  int pendingBookingsCount = 0;
 
   @override
   void initState() {
@@ -29,6 +32,27 @@ class _MyWidgetState extends State<BottomNav> {
     payment = const Payment();
     pages = [homePage, chat, payment, profile];
     super.initState();
+    _fetchPendingBookingsCount();
+    super.initState();
+  }
+
+  Future<void> _fetchPendingBookingsCount() async {
+    try {
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) return;
+
+      final snapshot = await FirebaseFirestore.instance
+          .collection('bookings')
+          .where('userId', isEqualTo: currentUser.uid)
+          .where('status', isEqualTo: 'pending')
+          .get();
+
+      setState(() {
+        pendingBookingsCount = snapshot.docs.length;
+      });
+    } catch (e) {
+      print('Error fetching pending bookings count: $e');
+    }
   }
 
   @override
@@ -44,20 +68,50 @@ class _MyWidgetState extends State<BottomNav> {
             currentTapIndex = index;
           });
         },
-        items: const [
-          Icon(
+        items: [
+          const Icon(
             Icons.home_outlined,
             color: Colors.white,
           ),
-          Icon(
+          const Icon(
             Icons.chat_bubble_outline,
             color: Colors.white,
           ),
-          Icon(
-            Icons.payment,
-            color: Colors.white,
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              const Icon(
+                Icons.payment,
+                color: Colors.white,
+              ),
+              if (pendingBookingsCount > 0)
+                Positioned(
+                  right: 0,
+                  top: 0,
+                  child: Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: const BoxDecoration(
+                      color: Colors.red,
+                      shape: BoxShape.circle,
+                    ),
+                    constraints: const BoxConstraints(
+                      minWidth: 12,
+                      minHeight: 12,
+                    ),
+                    child: Text(
+                      pendingBookingsCount.toString(),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 8,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+            ],
           ),
-          Icon(
+          const Icon(
             Icons.person_outline,
             color: Colors.white,
           )

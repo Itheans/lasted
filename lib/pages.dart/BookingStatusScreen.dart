@@ -93,11 +93,51 @@ class BookingStatusScreen extends StatelessWidget {
 
                   return Card(
                     margin: EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                    // เพิ่มสีขอบการ์ดตามสถานะ
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(
+                        color: booking['status'] == 'pending'
+                            ? Colors.orange
+                            : Colors.transparent,
+                        width: 2,
+                      ),
+                    ),
+                    elevation: booking['status'] == 'pending'
+                        ? 8
+                        : 2, // เพิ่มเงาถ้ารอยืนยัน
                     child: Padding(
                       padding: EdgeInsets.all(16),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          // สถานะการจอง (แสดงที่ส่วนบน)
+                          if (booking['status'] == 'pending')
+                            Container(
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 6),
+                              margin: EdgeInsets.only(bottom: 12),
+                              decoration: BoxDecoration(
+                                color: Colors.orange.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(color: Colors.orange),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.pending_actions,
+                                      color: Colors.orange, size: 16),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    'รอการยืนยัน',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.orange,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           Row(
                             children: [
                               ClipRRect(

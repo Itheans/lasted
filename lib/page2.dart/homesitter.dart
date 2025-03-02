@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:myproject/page2.dart/BookingAcceptancePage.dart';
 import 'package:myproject/page2.dart/_CatSearchPageState.dart';
 import 'package:myproject/page2.dart/booking/sitterBookingManagement.dart';
 import 'package:myproject/page2.dart/location/location.dart';
@@ -47,8 +48,9 @@ class _Home2State extends State<Home2> {
       final currentUser = FirebaseAuth.instance.currentUser;
       if (currentUser == null) return;
 
+      // ใช้ชื่อ collection เดียวกับในหน้ารายละเอียด
       final snapshot = await FirebaseFirestore.instance
-          .collection('bookings')
+          .collection('booking_requests') // ต้องใช้ collection เดียวกัน
           .where('sitterId', isEqualTo: currentUser.uid)
           .where('status', isEqualTo: 'pending')
           .get();
@@ -56,6 +58,12 @@ class _Home2State extends State<Home2> {
       setState(() {
         pendingBookingsCount = snapshot.docs.length;
       });
+
+      // เพิ่ม log เพื่อตรวจสอบ
+      print("Found ${snapshot.docs.length} pending bookings");
+      for (var doc in snapshot.docs) {
+        print("Booking data: ${doc.data()}");
+      }
     } catch (e) {
       print('Error fetching pending bookings count: $e');
     }
@@ -82,7 +90,7 @@ class _Home2State extends State<Home2> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5), // Soft grey background
+      backgroundColor: const Color(0xFFF5F5F5),
       appBar: AppBar(
         title: Text(
           'Cat Sitter',
@@ -98,15 +106,24 @@ class _Home2State extends State<Home2> {
             ],
           ),
         ),
-        backgroundColor: const Color(0xFF6FDFDF), // Soft teal
+        backgroundColor: const Color(0xFF6FDFDF),
         elevation: 0,
         actions: [
+          // เพิ่มปุ่มแจ้งเตือนที่มีตัวเลขแสดงจำนวนการจองที่รอยืนยัน
           Stack(
             children: [
               IconButton(
                 icon: const Icon(Icons.notifications_outlined,
                     color: Colors.white),
-                onPressed: () {},
+                onPressed: () {
+                  // เมื่อกดที่ไอคอนแจ้งเตือน ให้นำไปที่หน้าจัดการการจอง
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const SitterBookingManagement(),
+                    ),
+                  ).then((_) => _fetchPendingBookingsCount());
+                },
               ),
               if (pendingBookingsCount > 0)
                 Positioned(
@@ -161,7 +178,90 @@ class _Home2State extends State<Home2> {
               ),
               const SizedBox(height: 20),
 
-              // แถบเมนูการจัดการ
+              // เพิ่มแบนเนอร์คำขอฝากเลี้ยงที่รอการยืนยัน
+              if (pendingBookingsCount > 0)
+                Container(
+                  margin: const EdgeInsets.only(bottom: 20),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.orange.shade300, Colors.orange.shade500],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(15),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.orange.withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.3),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Text(
+                          pendingBookingsCount.toString(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'คำขอฝากเลี้ยงใหม่',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'คุณมี $pendingBookingsCount คำขอรอการตอบรับ',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          _updateTaskState(TaskType.booking);
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              // ต้องแน่ใจว่าเรียกไปยังหน้าที่ถูกต้อง
+                              builder: (context) =>
+                                  const BookingAcceptancePage(),
+                            ),
+                          ).then((_) => _fetchPendingBookingsCount());
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: Colors.orange,
+                        ),
+                        label: const Text('จัดการทันที'),
+                      ),
+                    ],
+                  ),
+                ),
+
+              // แถบเมนูการจัดการ (ส่วนที่มีอยู่แล้ว)
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -217,7 +317,36 @@ class _Home2State extends State<Home2> {
                           ),
                         ).then((_) => _fetchPendingBookingsCount());
                       },
-                      icon: const Icon(Icons.calendar_month),
+                      icon: Stack(
+                        children: [
+                          const Icon(Icons.calendar_month, color: Colors.teal),
+                          if (pendingBookingsCount > 0)
+                            Positioned(
+                              right: 0,
+                              top: 0,
+                              child: Container(
+                                padding: const EdgeInsets.all(2),
+                                decoration: const BoxDecoration(
+                                  color: Colors.red,
+                                  shape: BoxShape.circle,
+                                ),
+                                constraints: const BoxConstraints(
+                                  minWidth: 12,
+                                  minHeight: 12,
+                                ),
+                                child: Text(
+                                  pendingBookingsCount.toString(),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 8,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
                       label: const Text('จัดการ'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.white,

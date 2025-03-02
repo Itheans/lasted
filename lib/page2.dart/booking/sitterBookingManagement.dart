@@ -21,11 +21,13 @@ class _SitterBookingManagementState extends State<SitterBookingManagement> {
   int _pendingBookings = 0;
   int _acceptedBookings = 0;
   double _totalEarnings = 0;
+  int pendingBookingsCount = 0; // Add this line
 
   @override
   void initState() {
     super.initState();
     _loadSummaryData();
+    _fetchPendingBookingsCount(); // Add this line
   }
 
   Future<void> _loadSummaryData() async {
@@ -68,6 +70,26 @@ class _SitterBookingManagementState extends State<SitterBookingManagement> {
     } catch (e) {
       print('Error loading summary data: $e');
       setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _fetchPendingBookingsCount() async {
+    try {
+      final User? currentUser = _auth.currentUser;
+      if (currentUser == null) return;
+
+      final querySnapshot = await _firestore
+          .collection('bookings')
+          .where('sitterId', isEqualTo: currentUser.uid)
+          .where('status', isEqualTo: 'pending')
+          .get();
+
+      setState(() {
+        pendingBookingsCount = querySnapshot.docs.length;
+      });
+    } catch (e) {
+      print('Error fetching pending bookings count: $e');
+      // Optionally show error to user
     }
   }
 
@@ -208,23 +230,103 @@ class _SitterBookingManagementState extends State<SitterBookingManagement> {
   Widget _buildManagementOptions() {
     return Column(
       children: [
-        // ตรวจสอบการจอง
-        _buildOptionCard(
-          'การจองที่รอยืนยัน',
-          'ตรวจสอบและยอมรับการจองจากลูกค้า',
-          Icons.assignment,
-          Colors.orange,
-          () => Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const BookingAcceptancePage(),
+        // ตรวจสอบการจอง - ทำให้เป็นปุ่มใหญ่และเด่นหากมีคำขอที่รอยืนยัน
+        if (pendingBookingsCount > 0)
+          Container(
+            margin: const EdgeInsets.only(bottom: 20),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Colors.orange.shade300, Colors.orange.shade600],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(15),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.orange.withOpacity(0.4),
+                  blurRadius: 10,
+                  offset: const Offset(0, 5),
+                ),
+              ],
             ),
-          ).then((_) => _loadSummaryData()),
-          badge: _pendingBookings > 0 ? _pendingBookings.toString() : null,
-        ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const BookingAcceptancePage(),
+                    ),
+                  ).then((_) => _loadSummaryData());
+                },
+                borderRadius: BorderRadius.circular(15),
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(15),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.3),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.assignment_turned_in,
+                          color: Colors.white,
+                          size: 40,
+                        ),
+                      ),
+                      const SizedBox(width: 20),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "$pendingBookingsCount คำขอรอการยืนยัน",
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            const Text(
+                              "กรุณาตอบรับหรือปฏิเสธคำขอฝากเลี้ยงเหล่านี้",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(
+                        Icons.arrow_forward_ios,
+                        color: Colors.white,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          )
+        else
+          _buildOptionCard(
+            'การจองที่รอยืนยัน',
+            'ตรวจสอบและยอมรับการจองจากลูกค้า',
+            Icons.assignment,
+            Colors.orange,
+            () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const BookingAcceptancePage(),
+              ),
+            ).then((_) => _loadSummaryData()),
+          ),
         const SizedBox(height: 16),
 
-        // ตารางงานและรายได้
+        // ตารางงานและรายได้ (เหมือนเดิม)
         _buildOptionCard(
           'ตารางงานและรายได้',
           'ดูตารางงานและรายได้ของคุณ',

@@ -7,9 +7,8 @@ class SharedPreferenceHelper {
   static String userPicKey = 'USERPICKEY';
   static String displaynameKey = 'USERDISPLAYNAME';
   static String roleKey = 'USERROLEKEY'; // Added missing role key
-  static String userWalletKey = 'USERWALLETKEY';
+  static String userWalletKey = 'USERWALLETKEY'; // Added missing wallet key
 
-  // Save user data to SharedPreferences
   Future<bool> saveUserId(String getUserId) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     return prefs.setString(userIdKey, getUserId);
@@ -38,6 +37,11 @@ class SharedPreferenceHelper {
   Future<bool> saveUserRole(String getUserRole) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     return prefs.setString(roleKey, getUserRole);
+  }
+
+  Future<bool> saveUserWallet(String getUserWallet) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    return prefs.setString(userNameKey, getUserWallet);
   }
 
   // Getter methods to retrieve user data
@@ -71,6 +75,11 @@ class SharedPreferenceHelper {
     return prefs.getString(roleKey);
   }
 
+  Future<String?> getUserWallet() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    return prefs.getString(userWalletKey);
+  }
+
   // Additional utility methods to check if data exists
   Future<bool> isUserLoggedIn() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -80,15 +89,5 @@ class SharedPreferenceHelper {
   Future<bool> clearUserData() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     return await prefs.clear(); // Clear all data
-  }
-
-  Future<bool> saveUserWallet(String userWallet) async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    return prefs.setString(userWalletKey, userWallet);
-  }
-
-  Future<String?> getUserWallet() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    return prefs.getString(userWalletKey);
   }
 }

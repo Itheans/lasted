@@ -3,6 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:myproject/Admin/AdminPage.dart';
 import 'package:myproject/Admin/AdminLoginPage.dart'; // เพิ่มการนำเข้าไฟล์
 import 'package:myproject/Catpage.dart/CatDetailsPage.dart';
@@ -20,6 +21,7 @@ import 'package:myproject/services/auth.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
+  Stripe.publishableKey = 'YOUR_PUBLISHABLE_KEY';
   runApp(const MyApp());
 }
 

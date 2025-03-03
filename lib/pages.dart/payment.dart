@@ -22,10 +22,25 @@ class _PaymentState extends State<Payment> {
   int? add;
   TextEditingController amountcontroller = new TextEditingController();
 
+  // หลังแก้ไข
   getthesharedpref() async {
-    wallet = await SharedPreferenceHelper().getUserWallet();
-    id = await SharedPreferenceHelper().getUserId();
-    setState(() {});
+    try {
+      wallet = await SharedPreferenceHelper().getUserWallet();
+      // ถ้าค่า wallet เป็น null หรือค่าว่าง ให้กำหนดเป็น "0"
+      if (wallet == null || wallet!.isEmpty) {
+        wallet = "0";
+        // บันทึกค่าเริ่มต้นลงใน SharedPreferences
+        await SharedPreferenceHelper().saveUserWallet("0");
+      }
+      id = await SharedPreferenceHelper().getUserId();
+      setState(() {});
+    } catch (e) {
+      // จัดการกับข้อผิดพลาด
+      print('Error getting shared preferences: $e');
+      // กำหนดค่าเริ่มต้นในกรณีที่เกิดข้อผิดพลาด
+      wallet = "0";
+      setState(() {});
+    }
   }
 
   ontheload() async {
@@ -45,7 +60,9 @@ class _PaymentState extends State<Payment> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: wallet == null
-          ? CircularProgressIndicator()
+          ? Center(
+              child:
+                  CircularProgressIndicator()) // แก้ไขตรงนี้ให้แสดง loading ตรงกลางหน้าจอ
           : Container(
               margin: EdgeInsets.only(top: 60.0),
               child: Column(
@@ -179,6 +196,8 @@ class _PaymentState extends State<Payment> {
                   ),
                   GestureDetector(
                     onTap: () {
+                      // ล้างข้อมูลใน controller ก่อนเปิด dialog
+                      amountcontroller.clear();
                       openEdit();
                     },
                     child: Container(
@@ -302,6 +321,7 @@ class _PaymentState extends State<Payment> {
     return calculatedAmout.toString();
   }
 
+  // แก้ไขส่วนของปุ่ม Add Money ในฟังก์ชัน openEdit()
   Future openEdit() => showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -345,6 +365,7 @@ class _PaymentState extends State<Payment> {
                           borderRadius: BorderRadius.circular(10)),
                       child: TextField(
                         controller: amountcontroller,
+                        keyboardType: TextInputType.number, // เพิ่มบรรทัดนี้
                         decoration: InputDecoration(
                             border: InputBorder.none, hintText: 'Enter Amount'),
                       ),
@@ -355,6 +376,25 @@ class _PaymentState extends State<Payment> {
                     Center(
                       child: GestureDetector(
                         onTap: () {
+                          // เพิ่มการตรวจสอบค่าที่กรอก
+                          if (amountcontroller.text.trim().isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Please enter an amount')),
+                            );
+                            return;
+                          }
+
+                          // ตรวจสอบว่าเป็นตัวเลขหรือไม่
+                          try {
+                            int.parse(amountcontroller.text.trim());
+                          } catch (e) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                  content: Text('Please enter a valid number')),
+                            );
+                            return;
+                          }
+
                           Navigator.pop(context);
                           makePayment(amountcontroller.text);
                         },

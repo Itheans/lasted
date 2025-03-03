@@ -82,7 +82,13 @@ class SharedPreferenceHelper {
     return await prefs.clear(); // Clear all data
   }
 
-  saveUserWallet(String string) {}
+  Future<bool> saveUserWallet(String userWallet) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    return prefs.setString(userWalletKey, userWallet);
+  }
 
-  getUserWallet() {}
+  Future<String?> getUserWallet() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    return prefs.getString(userWalletKey);
+  }
 }
